@@ -150,7 +150,7 @@ Descriptive analysis using open data from https://www.gapminder.org/data/
 
 ## Row 
 
-Index 2: Mortality due to self-inflicted injury, per 100 000 standard population, age ajusted, 2000-2016.
+Index2: Mortality due to self-inflicted injury, per 100 000 standard population, age ajusted, 2000-2016.
 
 ## Row {height="80%"}
 
