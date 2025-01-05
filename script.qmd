@@ -1,0 +1,281 @@
+---
+title: "Diabetes and suicide in the world"
+format: dashboard
+theme: superhero
+---
+
+```{python}
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from itables import show
+import country_converter as coco
+```
+
+
+```{python}
+# load data
+diabetes = pd.read_csv("data/sh_sta_diab_zs.csv")
+suicide = pd.read_csv("data/suicide_per_100000_people.csv")
+
+```
+
+
+```{python}
+# long both databases
+suicide_long = suicide.melt(id_vars=["country"], var_name="year", value_name="mort")
+
+diabetes_long = diabetes.melt(id_vars=["country"], var_name="year", value_name="mort")
+
+```
+
+```{python}
+# filter suicide to include data since 2000 
+suicide_long_ = suicide_long[suicide_long["year"].astype(int) >= 2000]
+```
+
+```{python}
+# inspect values
+suicide_un = suicide_long_["year"].unique()
+suicide_long_un= suicide_long_["mort"].unique()
+```
+
+```{python}
+#mortality by year
+year_mort_counts = suicide_long.groupby("year")["mort"].count()
+```
+
+```{python}
+# explore country
+suicide_long_un = suicide_long_["country"].unique()
+```
+
+```{python}
+# diabetes
+diabetes_uni = diabetes["country"].unique()
+```
+
+```{python}
+# diabetes long
+diabetes_long_un = diabetes_long["year"].unique()
+```
+
+# Diabetes
+
+:::{.valuebox title="Diabetes prevalence" color="#5ba3b6" icon="bar-chart-line-fill"}
+Descriptive analysis using open data from https://www.gapminder.org/data/
+:::
+
+## Row 
+
+Index 1: Diabetes prevalence (% of population ages 20 to 79) 2000-2021
+
+## Row {height="80%"}
+
+###  {.tabset width="70%"}
+
+#### Descriptibe table 
+
+```{python}
+show(
+    diabetes_long,
+    paging=True, 
+    pageLength=22,  
+    lengthMenu=[[22, -1], [22, "All"]]
+)
+```
+
+#### Figures 
+
+```{python, message: false}
+diabetes_long = diabetes_long.sort_values(by=["country", "year"])
+diabetes_long = diabetes_long.dropna(subset=["year", "mort"])
+import plotly.express as px
+
+fig = px.line(
+    diabetes_long,
+    x="year",
+    y="mort",
+    color="country",
+    title="Trends of diabetes prevalence by country, 2000-2021",
+    labels={
+        "year": "Year",
+        "mort": "Prevalence (%)", 
+        "country": "Country",
+    },
+)
+```
+
+```{python}
+diabetes_long = diabetes.melt(id_vars=["country"], var_name="year", value_name="mort")
+
+diabetes_long["country_code"] = coco.convert(diabetes_long["country"], to="ISO3")
+
+fig_map = px.choropleth(
+    diabetes_long,
+    locations="country_code",
+    color="mort",
+    hover_name="country",
+    animation_frame="year",
+    title="Global prevalence of diabetes (2000-2021)",
+    labels={
+        "year": "Year",
+        "mort": "Prevalence (%)",
+        "country": "Country",
+    },
+)
+```
+
+::: {.panel-tabset}
+
+## Chart
+
+```{python}
+fig.show()
+```
+
+## Map
+
+```{python}
+fig_map.show()
+```
+
+:::
+
+# Suicide 
+
+:::{.valuebox title="Suicide mortality" color="primary" icon="bar-chart-line-fill"}
+Descriptive analysis using open data from https://www.gapminder.org/data/
+:::
+
+## Row 
+
+Index 2: Mortality due to self-inflicted injury, per 100 000 standard population, age ajusted.
+
+## Row {height="80%"}
+
+
+###  {.tabset width="70%"}
+
+#### Descriptibe table 
+
+```{python}
+show(suicide_long_, paging=True, pageLength=22, lengthMenu=[[22, -1], [22, "All"]])
+```
+
+#### Figures 
+
+```{python, message: false}
+# drop NaNs
+suicide_long_ = suicide_long_.sort_values(by=["country", "year"])
+suicide_long_ = suicide_long_.dropna(subset=["year", "mort"])
+
+# Convert to numeric 
+suicide_long_["year"] = pd.to_numeric(suicide_long_["year"], errors="coerce")
+suicide_long_["mort"] = pd.to_numeric(suicide_long_["mort"], errors="coerce")
+
+# Create the line chart
+fig_suicide = px.line(
+    suicide_long_,
+    x="year",
+    y="mort",
+    color="country",
+    title="Trends of suicide mortality by country, 2000-2016",
+    labels={
+        "year": "Year",
+        "mort": "Mortality rate ajusted by age (per 100,000)",
+        "country": "Country",
+    },
+)
+```
+
+```{python}
+suicide_long = suicide.melt(id_vars=["country"], var_name="year", value_name="mort")
+suicide_long_ = suicide_long[suicide_long["year"].astype(int) >= 2000]
+
+suicide_long_["country_code"] = coco.convert(suicide_long_["country"], to="ISO3")
+
+fig_map_suicide = px.choropleth(
+    suicide_long_,
+    locations="country_code",
+    color="mort",
+    hover_name="country",
+    animation_frame="year",
+    title="Global mortality rate of Suicide ajusted by age, 2000-2016)",
+    labels={
+        "year": "Year",
+        "mort": "Mortality (per 100,000)",
+        "country": "Country",
+        "country_code": "ISO3",
+    },
+)
+```
+
+::: {.panel-tabset}
+
+## Chart
+
+```{python}
+fig_suicide.show()
+```
+
+## Map
+
+```{python}
+fig_map_suicide.show()
+```
+
+:::
+
+# Relationship
+
+```{python}
+# rename
+diabetes_long_ren = diabetes_long.rename(columns={"mort": "mort_diabetes"})
+suicide_long_ren = suicide_long_.rename(columns={"mort": "mort_suicide"})
+
+# 'year' numeric
+diabetes_long_ren["year"] = pd.to_numeric(diabetes_long_ren["year"], errors="coerce")
+suicide_long_ren["year"] = pd.to_numeric(suicide_long_ren["year"], errors="coerce")
+
+# merge
+merged = pd.merge(
+    diabetes_long_ren, suicide_long_ren, how="inner", on=["country", "year"]
+)
+
+# drop nas
+merged_ = merged.dropna(subset=["mort_diabetes", "mort_suicide"])
+
+merged_["year"] = merged_["year"].astype(int)
+
+```
+
+## Row
+
+Exploring relationship between diabetes prevalence and suicide mortality rate ajusted by age worldwide.
+
+## Row
+
+### Column {.tabset}
+
+#### All
+
+```{python}
+fig_all = px.scatter(
+    merged_,
+    x="mort_diabetes",
+    y="mort_suicide",
+    color="country",  
+    hover_data=["year"],
+    title="Relationship between diabetes prevalence and suicide mortality ajusted by age, 2000-2016",
+    labels={
+        "mort_diabetes": "Diabetes Prevalence (%)",
+        "mort_suicide": "Suicide Mortality (per 100,000)",
+        "country": "Country",
+        "year": "Year",
+    },
+    trendline="ols",  
+)
+fig_all.show()
+```
+
